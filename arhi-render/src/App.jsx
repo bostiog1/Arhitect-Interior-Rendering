@@ -8,7 +8,7 @@ import titleImage from "./assets/title.png";
 function App() {
   return (
     <div className="min-h-screen bg-white">
-      <div className="text-center ">
+      <div className="text-center">
         <img
           src={titleImage}
           alt="Photographic Vision"

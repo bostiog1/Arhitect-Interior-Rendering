@@ -1,29 +1,16 @@
-import React, { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
-  Card,
-  CardContent,
   Button,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  TextField,
-  Checkbox,
-  FormControlLabel,
   Dialog,
   DialogContent,
   DialogTitle,
   DialogActions,
   Box,
   Typography,
-  Paper,
-  IconButton,
-  Chip,
 } from "@mui/material";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { Upload, Info } from "@mui/icons-material";
+import available from "../assets/available.png";
+import { X, ChevronDown, ChevronUp } from "lucide-react";
 
 // Reusable ImageSlider Component
 const ImageSlider = ({ beforeImage, afterImage }) => {
@@ -61,7 +48,7 @@ const ImageSlider = ({ beforeImage, afterImage }) => {
     container: {
       position: "relative",
       width: "100%",
-      aspectRatio: "15/8",
+      aspectRatio: "25/8",
       overflow: "hidden",
       cursor: "ew-resize",
       userSelect: "none",
@@ -159,11 +146,158 @@ const ImageSlider = ({ beforeImage, afterImage }) => {
 
 export default function RenderConfigurator() {
   const [renders, setRenders] = useState("3");
-  const [resolution, setResolution] = useState("2K");
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
+  const selectRef = useRef(null);
+
+  const [resolution, setResolution] = useState("2K"); // Your existing state for resolution
+  const [isResolutionSelectOpen, setIsResolutionSelectOpen] = useState(false); // NEW state for resolution dropdown
+  const resolutionSelectRef = useRef(null); // NEW ref for resolution dropdown container
+
   const [deliveryDate, setDeliveryDate] = useState(null);
   const [notes, setNotes] = useState("2 horizontal\n1 vertical");
   const [acceptPromotion, setAcceptPromotion] = useState(false);
   const [showResolutionInfo, setShowResolutionInfo] = useState(false);
+  // ADD THESE LINES HERE:
+  const [isAutoScrolling, setIsAutoScrolling] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const autoScrollInterval = useRef(null);
+  const scrollContainerRef = useRef(null);
+
+  // Close custom resolution select dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutsideResolutionSelect = (event) => {
+      if (
+        resolutionSelectRef.current &&
+        !resolutionSelectRef.current.contains(event.target)
+      ) {
+        setIsResolutionSelectOpen(false);
+      }
+    };
+    if (isResolutionSelectOpen) {
+      document.addEventListener(
+        "mousedown",
+        handleClickOutsideResolutionSelect
+      );
+    } else {
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutsideResolutionSelect
+      );
+    }
+    return () => {
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutsideResolutionSelect
+      );
+    };
+  }, [isResolutionSelectOpen]);
+
+  // Close custom select dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutsideSelect = (event) => {
+      if (selectRef.current && !selectRef.current.contains(event.target)) {
+        setIsSelectOpen(false); // Close select dropdown
+      }
+    };
+    if (isSelectOpen) {
+      document.addEventListener("mousedown", handleClickOutsideSelect);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutsideSelect);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutsideSelect);
+    };
+  }, [isSelectOpen]);
+
+  // Auto-scroll function
+  const startAutoScroll = useCallback(() => {
+    if (autoScrollInterval.current) return;
+
+    autoScrollInterval.current = setInterval(() => {
+      if (scrollContainerRef.current && isAutoScrolling && !isDragging) {
+        const container = scrollContainerRef.current;
+        const maxScroll = container.scrollWidth - container.clientWidth;
+
+        if (container.scrollLeft >= maxScroll) {
+          // Reset to beginning when reaching the end
+          container.scrollLeft = 0;
+        } else {
+          // Scroll to the right
+          container.scrollLeft += 1;
+        }
+      }
+    }, 20); // Adjust speed by changing this value (lower = faster)
+  }, [isAutoScrolling, isDragging]);
+
+  // Stop auto-scroll function
+  const stopAutoScroll = useCallback(() => {
+    if (autoScrollInterval.current) {
+      clearInterval(autoScrollInterval.current);
+      autoScrollInterval.current = null;
+    }
+  }, []);
+
+  // Mouse enter handler - pause auto-scroll
+  const handleMouseEnter = () => {
+    setIsAutoScrolling(false);
+    stopAutoScroll();
+  };
+
+  // Mouse leave handler - resume auto-scroll
+  const handleMouseLeave = () => {
+    if (!isDragging) {
+      setIsAutoScrolling(true);
+    }
+  };
+
+  // Mouse down handler - start manual scroll
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    setIsAutoScrolling(false);
+    stopAutoScroll();
+    setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
+    setScrollLeft(scrollContainerRef.current.scrollLeft);
+    scrollContainerRef.current.style.cursor = "grabbing";
+  };
+
+  // Mouse move handler - manual scroll
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const x = e.pageX - scrollContainerRef.current.offsetLeft;
+    const walk = (x - startX) * 2; // Adjust scroll speed multiplier
+    scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+  };
+
+  // Mouse up handler - end manual scroll
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    scrollContainerRef.current.style.cursor = "grab";
+    // Resume auto-scroll after a short delay
+    setTimeout(() => {
+      setIsAutoScrolling(true);
+    }, 1000);
+  };
+
+  // Effect to start auto-scroll on component mount
+  useEffect(() => {
+    startAutoScroll();
+
+    return () => {
+      stopAutoScroll();
+    };
+  }, [startAutoScroll]);
+
+  // Effect to handle auto-scroll state changes
+  useEffect(() => {
+    if (isAutoScrolling && !isDragging) {
+      startAutoScroll();
+    } else {
+      stopAutoScroll();
+    }
+  }, [isAutoScrolling, isDragging, startAutoScroll]);
 
   const resolutionOptions = [
     { value: "HD", label: "HD (1920x1080)", price: 50 },
@@ -190,29 +324,10 @@ export default function RenderConfigurator() {
   return (
     <section
       id="configurator"
-      // className="py-12 md:py-20 bg-gradient-to-br from-blue-50 to-indigo-100"
       className="w-full bg-gradient-to-br from-blue-50 to-indigo-100"
       style={{ backgroundColor: "#1C1C44" }}
     >
-      {/* <div className="container mx-auto px-4 sm:px-6 lg:px-8"> */}
-      <div className="container mx-auto">
-        {/* <div className="text-center mb-8 md:mb-16">
-          <Typography
-            variant="h3"
-            component="h2"
-            className="text-slate-900 mb-4 font-bold text-2xl sm:text-3xl md:text-4xl"
-          >
-            Configure Your Render Order
-          </Typography>
-          <Typography
-            variant="h6"
-            className="text-slate-600 max-w-2xl mx-auto text-base md:text-xl"
-          >
-            Customize your architectural rendering project with our easy-to-use
-            configurator
-          </Typography>
-        </div> */}
-
+      <div className="w-full">
         <div className="w-full mx-auto">
           {/* Before/After Slider Section - Full Width */}
           <div className="w-full">
@@ -222,175 +337,289 @@ export default function RenderConfigurator() {
             />
           </div>
 
-          <Card
-            className="backdrop-blur-sm shadow-2xl"
-            style={{ backgroundColor: "#1C1C44" }}
+          <div
+            className="backdrop-blur-sm shadow-2xl bg-[#1C1C44]" /* Added bg-[#1C1C44] and rounded-xl */
           >
-            <CardContent className="p-4 md:p-8 space-y-6 md:space-y-8">
+            <div className="p-4 md:p-8 space-y-6 md:space-y-8">
               {/* Configuration Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                <FormControl fullWidth>
-                  <InputLabel>Renders</InputLabel>
-                  <Select
-                    value={renders}
-                    label="Renders"
-                    onChange={(e) => setRenders(e.target.value)}
-                    className="bg-white rounded-xl"
-                  >
-                    {[1, 2, 3, 4, 5, 6, 10, 11].map((num) => (
-                      <MenuItem key={num} value={num.toString()}>
-                        {num}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <FormControl fullWidth>
-                  <InputLabel>Resolution</InputLabel>
-                  <Select
-                    value={resolution}
-                    label="Resolution"
-                    onChange={(e) => setResolution(e.target.value)}
-                    className="bg-white rounded-xl"
-                    endAdornment={
-                      <IconButton
-                        size="small"
-                        onClick={() => setShowResolutionInfo(true)}
-                        className="mr-8"
-                      >
-                        <Info fontSize="small" />
-                      </IconButton>
-                    }
-                  >
-                    {resolutionOptions.map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <LocalizationProvider dateAdapter={AdapterDateFns}>
-                  <DatePicker
-                    label="Delivery Date"
-                    value={deliveryDate}
-                    onChange={(newValue) => setDeliveryDate(newValue)}
-                    minDate={new Date()}
-                    className="bg-white rounded-xl"
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        className: "bg-white rounded-xl",
-                      },
-                    }}
-                  />
-                </LocalizationProvider>
-
-                <Paper className="flex items-center justify-between p-3 bg-white rounded-xl">
-                  <div>
-                    <Typography variant="body2" className="text-slate-600">
-                      Price
-                    </Typography>
-                    <Typography
-                      variant="h6"
-                      className="text-blue-600 font-bold"
-                    >
-                      ${calculatePrice()}
-                    </Typography>
-                  </div>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    Pay
-                  </Button>
-                </Paper>
-              </div>
-
-              {/* Upload and Notes Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              {/* <div className="grid grid-cols-1  sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"> */}
+              <div className="flex flex-wrap gap-4 md:gap-6 justify-evenly">
+                {/* Renders Dropdown */}
                 <div className="space-y-2">
-                  <Typography
-                    variant="subtitle1"
-                    className="text-slate-700 font-medium"
+                  <label
+                    htmlFor="renders-custom-select" // Changed ID for custom select
+                    className="block text-white font-bold text-lg mb-3"
                   >
-                    Upload .skp
-                  </Typography>
-                  <Paper className="border-2 border-dashed border-slate-300 rounded-xl p-6 md:p-8 text-center hover:border-blue-400 transition-colors cursor-pointer bg-white/50">
-                    <Upload className="h-8 w-8 md:h-12 md:w-12 text-slate-400 mx-auto mb-4" />
-                    <Typography className="text-slate-600 text-sm md:text-base">
-                      Click to upload or drag and drop
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      className="text-slate-500 mt-2 block"
+                    Renders
+                  </label>
+                  <div className="relative w-full" ref={selectRef}>
+                    {" "}
+                    {/* Added ref here */}
+                    {/* The custom "select button" */}
+                    <button
+                      type="button"
+                      id="renders-custom-select"
+                      onClick={() => setIsSelectOpen(!isSelectOpen)}
+                      className="w-full p-3 bg-[#1c1c44] text-white text-center rounded-3xl
+                        border-2 border-white shadow-md shadow-white/20
+                        focus:outline-none focus:ring-2 focus:ring-blue-500
+                        hover:ring-2 hover:ring-white/50 hover:shadow-lg hover:shadow-white/40
+                        transition-all duration-200 flex items-center justify-center relative pr-10"
                     >
-                      SketchUp files (.skp) up to 100MB
-                    </Typography>
-                  </Paper>
+                      <span className="text-lg">{renders}</span>{" "}
+                      {/* Display selected value with larger font */}
+                      {/* Custom arrow icon */}
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-white">
+                        {isSelectOpen ? (
+                          <ChevronUp className="h-4 w-4 fill-current" /> // You need to import ChevronUp from 'lucide-react'
+                        ) : (
+                          <ChevronDown className="h-4 w-4 fill-current" /> // You need to import ChevronDown from 'lucide-react'
+                        )}
+                      </div>
+                    </button>
+                    {/* The custom dropdown options list */}
+                    {isSelectOpen && (
+                      <ul className="absolute z-20 w-full mt-2 bg-[#1c1c44] rounded-xl shadow-lg border-2 border-white max-h-60 overflow-y-auto custom-scrollbar">
+                        {[1, 2, 3, 4, 5, 6, 10, 11].map((num) => (
+                          <li
+                            key={num}
+                            onClick={() => {
+                              setRenders(num.toString()); // Update the state
+                              setIsSelectOpen(false); // Close the dropdown
+                            }}
+                            className={`
+                              p-0 text-white cursor-pointer transition-colors duration-150
+                              mx-1.5 my-1 rounded-2xl text-center text-lg
+                              ${
+                                num.toString() === renders
+                                  ? "bg-gray-400 font-bold"
+                                  : "bg-gray-700"
+                              } hover:bg-gray-600`}
+                          >
+                            {num}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
 
+                {/* Resolution Dropdown */}
                 <div className="space-y-2">
-                  <Typography
-                    variant="subtitle1"
-                    className="text-slate-700 font-medium"
+                  <div className="flex items-center mb-2">
+                    <label
+                      htmlFor="resolution-custom-select"
+                      className="block text-white font-bold text-lg"
+                    >
+                      Resolution
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowResolutionInfo(true)} // Retains existing functionality
+                      className="text-white hover:text-blue-400 p-1 rounded-full"
+                      aria-label="Resolution Information"
+                    >
+                      <Info fontSize="small" />{" "}
+                      {/* Ensure Info is imported (e.g., from '@mui/icons-material' or 'lucide-react') */}
+                    </button>
+                  </div>
+                  <div className="relative w-full" ref={resolutionSelectRef}>
+                    {/* The custom "select button" for Resolution */}
+                    <button
+                      type="button"
+                      id="resolution-custom-select"
+                      onClick={() =>
+                        setIsResolutionSelectOpen(!isResolutionSelectOpen)
+                      }
+                      className="w-full p-3 bg-[#1c1c44] text-white text-center rounded-3xl
+                 border-2 border-white shadow-md shadow-white/20
+                 focus:outline-none focus:ring-2 focus:ring-blue-500
+                 hover:ring-2 hover:ring-white/50 hover:shadow-lg hover:shadow-white/40
+                 transition-all duration-200 flex items-center justify-center relative pr-10"
+                    >
+                      <span className="text-lg">
+                        {
+                          resolutionOptions.find(
+                            (opt) => opt.value === resolution
+                          )?.label
+                        }{" "}
+                        {/* Display selected label */}
+                      </span>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-white">
+                        {isResolutionSelectOpen ? (
+                          <ChevronUp className="h-4 w-4 fill-current" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 fill-current" />
+                        )}
+                      </div>
+                    </button>
+
+                    {/* The custom dropdown options list for Resolution */}
+                    {isResolutionSelectOpen && (
+                      <ul className="absolute z-20 w-full mt-2 bg-[#1c1c44] rounded-xl shadow-lg border-2 border-white max-h-60 overflow-y-auto custom-scrollbar">
+                        {resolutionOptions.map((option) => (
+                          <li
+                            key={option.value}
+                            onClick={() => {
+                              setResolution(option.value); // Update the state
+                              setIsResolutionSelectOpen(false); // Close the dropdown
+                            }}
+                            className={`
+              p-3 text-white cursor-pointer transition-colors duration-150
+              mx-2 my-1 rounded-2xl text-center text-lg
+              ${
+                option.value === resolution
+                  ? "bg-gray-400 font-bold"
+                  : "bg-gray-700"
+              }
+              hover:bg-gray-500
+            `}
+                          >
+                            {option.label}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+
+                {/* Delivery Date Input (Basic HTML Date Input) */}
+                <div>
+                  <label
+                    htmlFor="delivery-date-input"
+                    className="block text-white font-bold text-lg mb-4"
                   >
+                    Delivery Date
+                  </label>
+
+                  <input
+                    id="delivery-date-input"
+                    type="date"
+                    value={
+                      deliveryDate
+                        ? deliveryDate.toISOString().split("T")[0]
+                        : ""
+                    } // Format Date object for input type="date"
+                    onChange={(e) =>
+                      setDeliveryDate(
+                        e.target.value ? new Date(e.target.value) : null
+                      )
+                    }
+                    min={new Date().toISOString().split("T")[0]} // Set min date to today
+                    className="w-full p-3 bg-[#1c1c44] text-white text-center rounded-3xl appearance-none pr-10
+                      border-  border-2 border-white shadow-md shadow-white/20
+                      focus:outline-none focus:ring-2 focus:ring-blue-500
+                      hover:ring-2 hover:ring-white/50 hover:shadow-lg  hover:shadow-white/40 
+                      transition-all duration-200"
+                  />
+                </div>
+
+                {/* Price and Pay Button */}
+                <div
+                  className="flex items-center justify-between gap-x-7 mt-5"
+                  style={{ backgroundColor: "#1c1c44" }}
+                >
+                  <div>
+                    <span className="block text-white font-bold text-2xl mb-1">
+                      Price
+                    </span>
+                    <span className="text-[oklch(0.74_0.16_87.89)]  font-bold text-2xl">
+                      {/* Added '$' here for consistent display */}$
+                      {calculatePrice()}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="bg-[#1c1c44] text-white font-bold text-lg px-4 rounded-full w-24 h-10
+                    shadow-md shadow-white/40 {/* Light white shadow */} border-  border-2 border-white
+                    hover:shadow-lg hover:shadow-white/50 {/* Bigger light white shadow on hover */}
+                    hover:bg-[#2a2a5e] {/* Slightly lighter background on hover for a subtle change */}
+                    transition-all duration-200 border border-white"
+                  >
+                    Pay
+                  </button>
+                </div>
+              </div>
+
+              <div className="text-center">
+                <img
+                  src={available}
+                  alt="Photographic Vision"
+                  className="w-full h-auto"
+                />
+              </div>
+              {/* Upload and Notes Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                {/* Upload .skp Section */}
+                <div className="space-y-2">
+                  <span className="block text-white font-medium text-2xl mb-3">
+                    {" "}
+                    {/* Changed from Typography */}
+                    Upload .skp
+                  </span>
+                  <div
+                    className="border-2 border-solid border-slate-300 rounded-xl p-6 md:p-8 text-center shadow-md shadow-white/40 hover:ring-2 hover:ring-white/50 
+                    border-  border-2 border-white
+                    hover:shadow-lg hover:shadow-white/30 transition-colors cursor-pointer"
+                    style={{ backgroundColor: "#1c1c44" }}
+                  >
+                    {/* Upload icon is from @mui/icons-material, keep it as is */}
+                    <Upload className="h-8 w-8 md:h-12 md:w-12 text-blue-400 mx-auto mb-4" />
+                    <span className="block text-white text-sm md:text-base">
+                      {" "}
+                      {/* Changed from Typography */}
+                      Click to upload or drag and drop
+                    </span>
+                    <span className="block text-white text-sm mt-2">
+                      {" "}
+                      {/* Changed from Typography, text-sm is equivalent to variant="caption" */}
+                      SketchUp files (.skp) up to 100MB
+                    </span>
+                  </div>
+                </div>
+
+                {/* Notes Section */}
+                <div className="space-y-2">
+                  <span className="block text-white font-medium text-2xl mb-3">
+                    {" "}
+                    {/* Changed from Typography */}
                     Notes
-                  </Typography>
-                  <TextField
-                    multiline
-                    rows={6}
-                    fullWidth
+                  </span>
+                  <textarea
+                    rows={4}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Add any specific requirements or notes..."
-                    className="bg-white rounded-xl"
-                  />
+                    className="w-full p-3 bg-[#1c1c44] text-white rounded-xl border-2 border-white
+                      focus:outline-none focus:ring-2 focus:ring-blue-500
+                      hover:ring-2 hover:ring-white/50 hover:shadow-lg hover:shadow-white/20
+                      transition-all duration-200
+                      resize-y overflow-auto min-h-[6rem] placeholder:text-white/70" /* <-- Ensure resize-y and overflow-auto are here */
+                  ></textarea>
                 </div>
               </div>
-
-              {/* Promotion Checkbox */}
-              {/* <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={acceptPromotion}
-                    onChange={(e) => setAcceptPromotion(e.target.checked)}
-                  />
-                }
-                label="Accept - renders will be promoted on media (10% discount)"
-                className="text-slate-600"
-              /> */}
-
-              {/* Place Order Button */}
-              <div className="pt-6 border-t border-slate-200">
-                <Button
-                  variant="contained"
-                  size="large"
-                  fullWidth
-                  className="bg-blue-600 hover:bg-blue-700 text-lg py-3 rounded-xl"
-                >
-                  Place Order - ${calculatePrice()}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Rolling Images Gallery - Full Width with Manual Scroll */}
-      <div className="w-full overflow-hidden py-8">
-        {/* <Typography
-          variant="h6"
-          className="text-slate-900 font-semibold text-center mb-4"
+      <div className="w-full overflow-hidden">
+        <div
+          className="overflow-x-auto flex no-scrollbar"
+          id="image-gallery-scroll-container"
+          style={{ scrollBehavior: "smooth", cursor: "grab" }}
+          ref={scrollContainerRef}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
         >
-          Recent Projects
-        </Typography> */}
-        <div className="overflow-x-auto flex space-x-4 p-4 scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-blue-100">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
             <div
               key={i}
-              className="flex-shrink-0 w-64 md:w-80 h-40 md:h-48 relative rounded-lg overflow-hidden shadow-lg"
+              className="flex-shrink-0 w-64 md:w-80 h-40 md:h-48 relative overflow-hidden shadow-lg"
             >
               <img
                 src={`https://picsum.photos/320/192?random=${i}`}
@@ -401,419 +630,104 @@ export default function RenderConfigurator() {
           ))}
         </div>
       </div>
-
       {/* Resolution Info Dialog */}
-      <Dialog
-        open={showResolutionInfo}
-        onClose={() => setShowResolutionInfo(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>Resolution Comparison</DialogTitle>
-        <DialogContent>
-          <Box className="p-4">
-            <img
-              src="https://picsum.photos/600/400"
-              alt="Resolution comparison chart"
-              className="w-full rounded-lg mb-4"
-            />
-            <div className="space-y-2 text-sm text-slate-600">
-              <Typography variant="body2">
-                <strong>HD (1920x1080):</strong> Standard quality for web use
-              </Typography>
-              <Typography variant="body2">
-                <strong>2K (2048x1080):</strong> Enhanced detail for
-                presentations
-              </Typography>
-              <Typography variant="body2">
-                <strong>4K (3840x2160):</strong> High quality for large prints
-              </Typography>
-              <Typography variant="body2">
-                <strong>8K (7680x4320):</strong> Ultra-high quality for
-                professional use
-              </Typography>
+      {showResolutionInfo && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-md p-4" // Changed here
+          onClick={() => setShowResolutionInfo(false)} // Close when clicking on the overlay
+        >
+          <div
+            className="relative bg-[#1C1C44] text-white rounded-xl shadow-2xl // Base styling
+                 w-full max-w-4xl sm:max-w-md md:max-w-[800px] md:max-h-[700px] md:h-[600px] sm:max-h-[80vh] // Responsive width (adjust max-w-X as needed)
+                 transform transition-all duration-300 scale-100 opacity-100 // Basic transition
+                 overflow-hidden" // Prevents content overflow outside rounded corners
+            onClick={(e) => e.stopPropagation()} // Prevent clicking inside from closing dialog
+          >
+            {/* DialogTitle equivalent */}
+            <div className="px-6 py-4 border-b border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-bold">Resolution Comparison</h2>
+              <button
+                onClick={() => setShowResolutionInfo(false)}
+                className="text-gray-400 hover:text-white transition-colors p-1 rounded-full"
+                aria-label="Close dialog"
+              >
+                {/* Ensure 'X' is imported from your icon library */}
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowResolutionInfo(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
+
+            {/* DialogContent equivalent */}
+            <div className="p-5">
+              {" "}
+              {/* Equivalent to DialogContent with padding */}
+              <div className="rounded-lg">
+                {" "}
+                {/* Equivalent to Box, removed redundant background if main dialog is dark */}
+                <div className="w-full mb-6 flex flex-col items-center">
+                  {/* 8K Container (Largest) */}
+                  <div className="relative w-full h-80 bg-gray-800 rounded-lg flex items-center justify-center shadow-xl">
+                    <div className="absolute top-2 left-1.5 text-white font-bold text-xl sm:top-1 sm:left-1 ">
+                      8K
+                    </div>{" "}
+                    {/* Top-left text */}
+                    {/* 4K Container */}
+                    <div className="absolute w-[75%] h-[80%] bg-gray-700 rounded-lg flex items-center justify-center shadow-lg">
+                      <div className="absolute top-2 left-2 text-white font-bold text-xl sm:top-1 sm:left-1 sm:text-base">
+                        4K
+                      </div>{" "}
+                      {/* Top-left text */}
+                      {/* 2K Container */}
+                      <div className="absolute w-[70%] h-[73%] bg-gray-600 rounded-lg flex items-center justify-center shadow-md">
+                        <div className="absolute top-2 left-2 text-white font-bold text-xl sm:text-base">
+                          2K
+                        </div>{" "}
+                        {/* Top-left text */}
+                        {/* HD Container (Smallest) */}
+                        <div className="absolute w-[57%] h-[60%] bg-gray-500 rounded-lg flex items-center justify-center text-gray-900 font-bold text-lg shadow-sm">
+                          <div className="absolute top-4 left-4 text-gray-900 font-bold text-lg sm:top-1 sm:left-1 sm:text-base">
+                            HD
+                          </div>{" "}
+                          {/* Top-left text */}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2 text-sm text-gray-300">
+                  {" "}
+                  {/* Adjusted text color for dark background */}
+                  <p>
+                    <strong>HD (1920x1080):</strong> Standard quality for web
+                    use
+                  </p>
+                  <p>
+                    <strong>2K (2048x1080):</strong> Enhanced detail for
+                    presentations
+                  </p>
+                  <p>
+                    <strong>4K (3840x2160):</strong> High quality for large
+                    prints
+                  </p>
+                  <p>
+                    <strong>8K (7680x4320):</strong> Ultra-high quality for
+                    professional use
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* DialogActions equivalent */}
+            <div className="px-6 py-4 border-t border-gray-700 flex justify-end">
+              <button
+                onClick={() => setShowResolutionInfo(false)}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
-// import { useState } from "react";
-// import {
-//   Card,
-//   CardContent,
-//   Button,
-//   Select,
-//   MenuItem,
-//   FormControl,
-//   InputLabel,
-//   TextField,
-//   Checkbox,
-//   FormControlLabel,
-//   Dialog,
-//   DialogContent,
-//   DialogTitle,
-//   DialogActions,
-//   Box,
-//   Typography,
-//   Paper,
-//   IconButton,
-//   Chip,
-// } from "@mui/material";
-// import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-// import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-// import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-// import { Upload, Info, CalendarMonth } from "@mui/icons-material";
-// import { format } from "date-fns";
-
-// export default function RenderConfigurator() {
-//   const [renders, setRenders] = useState("3");
-//   const [resolution, setResolution] = useState("2K");
-//   const [deliveryDate, setDeliveryDate] = useState(null);
-//   const [notes, setNotes] = useState("2 horizontal\n1 vertical");
-//   const [acceptPromotion, setAcceptPromotion] = useState(false);
-//   const [sliderPosition, setSliderPosition] = useState(50);
-//   const [showResolutionInfo, setShowResolutionInfo] = useState(false);
-
-//   const resolutionOptions = [
-//     { value: "HD", label: "HD (1920x1080)", price: 50 },
-//     { value: "2K", label: "2K (2048x1080)", price: 70 },
-//     { value: "4K", label: "4K (3840x2160)", price: 120 },
-//     { value: "8K", label: "8K (7680x4320)", price: 200 },
-//   ];
-
-//   const calculatePrice = () => {
-//     const basePrice =
-//       resolutionOptions.find((r) => r.value === resolution)?.price || 70;
-//     const renderCount = Number.parseInt(renders);
-//     const rushMultiplier =
-//       deliveryDate &&
-//       deliveryDate < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-//         ? 1.5
-//         : 1;
-//     const promotionDiscount = acceptPromotion ? 0.9 : 1;
-
-//     return Math.round(
-//       basePrice * renderCount * rushMultiplier * promotionDiscount
-//     );
-//   };
-
-//   const handleSliderMouseDown = (e) => {
-//     const rect = e.currentTarget.parentElement?.getBoundingClientRect();
-//     if (!rect) return;
-
-//     const handleMouseMove = (e) => {
-//       const newPosition = ((e.clientX - rect.left) / rect.width) * 100;
-//       setSliderPosition(Math.max(0, Math.min(100, newPosition)));
-//     };
-
-//     const handleMouseUp = () => {
-//       document.removeEventListener("mousemove", handleMouseMove);
-//       document.removeEventListener("mouseup", handleMouseUp);
-//     };
-
-//     document.addEventListener("mousemove", handleMouseMove);
-//     document.addEventListener("mouseup", handleMouseUp);
-//   };
-
-//   return (
-//     <section
-//       id="configurator"
-//       className="py-12 md:py-20 bg-gradient-to-br from-blue-50 to-indigo-100"
-//     >
-//       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-//         <div className="text-center mb-8 md:mb-16">
-//           <Typography
-//             variant="h3"
-//             component="h2"
-//             className="text-slate-900 mb-4 font-bold text-2xl sm:text-3xl md:text-4xl"
-//           >
-//             Configure Your Render Order
-//           </Typography>
-//           <Typography
-//             variant="h6"
-//             className="text-slate-600 max-w-2xl mx-auto text-base md:text-xl"
-//           >
-//             Customize your architectural rendering project with our easy-to-use
-//             configurator
-//           </Typography>
-//         </div>
-
-//         <div className="max-w-6xl mx-auto">
-//           <Card className="bg-white/80 backdrop-blur-sm shadow-2xl">
-//             <CardContent className="p-4 md:p-8 space-y-6 md:space-y-8">
-//               {/* Before/After Slider Section */}
-//               <div className="relative w-full h-48 md:h-80 rounded-xl overflow-hidden shadow-lg">
-//                 <div className="absolute inset-0">
-//                   <img
-//                     src="https://picsum.photos/800/400"
-//                     alt="Before render"
-//                     className="w-full h-full object-cover"
-//                   />
-//                 </div>
-//                 <div
-//                   className="absolute inset-0 overflow-hidden"
-//                   style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
-//                 >
-//                   <img
-//                     src="https://picsum.photos/800/401"
-//                     alt="After render"
-//                     className="w-full h-full object-cover"
-//                   />
-//                 </div>
-//                 <div
-//                   className="absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-ew-resize z-10"
-//                   style={{ left: `${sliderPosition}%` }}
-//                   onMouseDown={handleSliderMouseDown}
-//                 >
-//                   <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 md:w-8 md:h-8 bg-white rounded-full shadow-lg flex items-center justify-center">
-//                     <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-600 rounded-full"></div>
-//                   </div>
-//                 </div>
-//                 <Chip
-//                   label="Original"
-//                   className="!absolute bottom-4 left-4 !bg-black/50 !text-white"
-//                   size="small"
-//                 />
-//                 <Chip
-//                   label="AI Rendering"
-//                   className="!absolute bottom-4 right-4 !bg-black/50 !text-white"
-//                   size="small"
-//                 />
-//               </div>
-
-//               {/* Configuration Grid */}
-//               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-//                 <FormControl fullWidth>
-//                   <InputLabel>Renders</InputLabel>
-//                   <Select
-//                     value={renders}
-//                     label="Renders"
-//                     onChange={(e) => setRenders(e.target.value)}
-//                     className="bg-white rounded-xl"
-//                   >
-//                     {[1, 2, 3, 4, 5, 6, 10, 11].map((num) => (
-//                       <MenuItem key={num} value={num.toString()}>
-//                         {num}
-//                       </MenuItem>
-//                     ))}
-//                   </Select>
-//                 </FormControl>
-
-//                 <FormControl fullWidth>
-//                   <InputLabel>Resolution</InputLabel>
-//                   <Select
-//                     value={resolution}
-//                     label="Resolution"
-//                     onChange={(e) => setResolution(e.target.value)}
-//                     className="bg-white rounded-xl"
-//                     endAdornment={
-//                       <IconButton
-//                         size="small"
-//                         onClick={() => setShowResolutionInfo(true)}
-//                         className="mr-8"
-//                       >
-//                         <Info fontSize="small" />
-//                       </IconButton>
-//                     }
-//                   >
-//                     {resolutionOptions.map((option) => (
-//                       <MenuItem key={option.value} value={option.value}>
-//                         {option.label}
-//                       </MenuItem>
-//                     ))}
-//                   </Select>
-//                 </FormControl>
-
-//                 <LocalizationProvider dateAdapter={AdapterDateFns}>
-//                   <DatePicker
-//                     label="Delivery Date"
-//                     value={deliveryDate}
-//                     onChange={(newValue) => setDeliveryDate(newValue)}
-//                     minDate={new Date()}
-//                     className="bg-white rounded-xl"
-//                     slotProps={{
-//                       textField: {
-//                         fullWidth: true,
-//                         className: "bg-white rounded-xl",
-//                       },
-//                     }}
-//                   />
-//                 </LocalizationProvider>
-
-//                 <Paper className="flex items-center justify-between p-3 bg-white rounded-xl">
-//                   <div>
-//                     <Typography variant="body2" className="text-slate-600">
-//                       Price
-//                     </Typography>
-//                     <Typography
-//                       variant="h6"
-//                       className="text-blue-600 font-bold"
-//                     >
-//                       ${calculatePrice()}
-//                     </Typography>
-//                   </div>
-//                   <Button
-//                     variant="contained"
-//                     size="small"
-//                     className="bg-blue-600 hover:bg-blue-700"
-//                   >
-//                     Pay
-//                   </Button>
-//                 </Paper>
-//               </div>
-
-//               {/* Rolling Images Gallery */}
-//               <div className="space-y-4">
-//                 <Typography
-//                   variant="h6"
-//                   className="text-slate-900 font-semibold"
-//                 >
-//                   Recent Projects
-//                 </Typography>
-//                 <div className="relative overflow-hidden rounded-xl">
-//                   <div className="flex space-x-4 animate-scroll">
-//                     {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-//                       <div
-//                         key={i}
-//                         className="flex-shrink-0 w-48 md:w-64 h-32 md:h-40 relative rounded-lg overflow-hidden"
-//                       >
-//                         <img
-//                           src={`https://picsum.photos/256/160?random=${i}`}
-//                           alt={`Project ${i}`}
-//                           className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-//                         />
-//                       </div>
-//                     ))}
-//                   </div>
-//                 </div>
-//               </div>
-
-//               {/* Upload and Notes Section */}
-//               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-//                 <div className="space-y-2">
-//                   <Typography
-//                     variant="subtitle1"
-//                     className="text-slate-700 font-medium"
-//                   >
-//                     Upload .skp
-//                   </Typography>
-//                   <Paper className="border-2 border-dashed border-slate-300 rounded-xl p-6 md:p-8 text-center hover:border-blue-400 transition-colors cursor-pointer bg-white/50">
-//                     <Upload className="h-8 w-8 md:h-12 md:w-12 text-slate-400 mx-auto mb-4" />
-//                     <Typography className="text-slate-600 text-sm md:text-base">
-//                       Click to upload or drag and drop
-//                     </Typography>
-//                     <Typography
-//                       variant="caption"
-//                       className="text-slate-500 mt-2 block"
-//                     >
-//                       SketchUp files (.skp) up to 100MB
-//                     </Typography>
-//                   </Paper>
-//                 </div>
-
-//                 <div className="space-y-2">
-//                   <Typography
-//                     variant="subtitle1"
-//                     className="text-slate-700 font-medium"
-//                   >
-//                     Notes
-//                   </Typography>
-//                   <TextField
-//                     multiline
-//                     rows={6}
-//                     fullWidth
-//                     value={notes}
-//                     onChange={(e) => setNotes(e.target.value)}
-//                     placeholder="Add any specific requirements or notes..."
-//                     className="bg-white rounded-xl"
-//                   />
-//                 </div>
-//               </div>
-
-//               {/* Promotion Checkbox */}
-//               <FormControlLabel
-//                 control={
-//                   <Checkbox
-//                     checked={acceptPromotion}
-//                     onChange={(e) => setAcceptPromotion(e.target.checked)}
-//                   />
-//                 }
-//                 label="Accept - renders will be promoted on media (10% discount)"
-//                 className="text-slate-600"
-//               />
-
-//               {/* Place Order Button */}
-//               <div className="pt-6 border-t border-slate-200">
-//                 <Button
-//                   variant="contained"
-//                   size="large"
-//                   fullWidth
-//                   className="bg-blue-600 hover:bg-blue-700 text-lg py-3 rounded-xl"
-//                 >
-//                   Place Order - ${calculatePrice()}
-//                 </Button>
-//               </div>
-//             </CardContent>
-//           </Card>
-//         </div>
-//       </div>
-
-//       {/* Resolution Info Dialog */}
-//       <Dialog
-//         open={showResolutionInfo}
-//         onClose={() => setShowResolutionInfo(false)}
-//         maxWidth="md"
-//         fullWidth
-//       >
-//         <DialogTitle>Resolution Comparison</DialogTitle>
-//         <DialogContent>
-//           <Box className="p-4">
-//             <img
-//               src="https://picsum.photos/600/400"
-//               alt="Resolution comparison chart"
-//               className="w-full rounded-lg mb-4"
-//             />
-//             <div className="space-y-2 text-sm text-slate-600">
-//               <Typography variant="body2">
-//                 <strong>HD (1920x1080):</strong> Standard quality for web use
-//               </Typography>
-//               <Typography variant="body2">
-//                 <strong>2K (2048x1080):</strong> Enhanced detail for
-//                 presentations
-//               </Typography>
-//               <Typography variant="body2">
-//                 <strong>4K (3840x2160):</strong> High quality for large prints
-//               </Typography>
-//               <Typography variant="body2">
-//                 <strong>8K (7680x4320):</strong> Ultra-high quality for
-//                 professional use
-//               </Typography>
-//             </div>
-//           </Box>
-//         </DialogContent>
-//         <DialogActions>
-//           <Button onClick={() => setShowResolutionInfo(false)}>Close</Button>
-//         </DialogActions>
-//       </Dialog>
-
-//       <style jsx>{`
-//         @keyframes scroll {
-//           0% {
-//             transform: translateX(0);
-//           }
-//           100% {
-//             transform: translateX(-50%);
-//           }
-//         }
-//         .animate-scroll {
-//           animation: scroll 20s linear infinite;
-//         }
-//       `}</style>
-//     </section>
-//   );
-// }
