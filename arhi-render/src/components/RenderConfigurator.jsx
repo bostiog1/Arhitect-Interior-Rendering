@@ -12,7 +12,6 @@ import { Upload, Info } from "@mui/icons-material";
 import available from "../assets/available.png";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
 
-// Reusable ImageSlider Component
 const ImageSlider = ({ beforeImage, afterImage }) => {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);

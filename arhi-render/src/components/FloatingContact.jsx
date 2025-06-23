@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-// Import Lucide icons instead of MUI icons for consistency with Tailwind
 import { Phone, Mail, MessageSquare, Instagram, X } from "lucide-react";
 
 export default function FloatingContact() {
   const [isOpen, setIsOpen] = useState(false);
   const [showWidget, setShowWidget] = useState(false);
-  // New state to control the visibility of just the tooltip message
   const [showHelpTooltip, setShowHelpTooltip] = useState(true);
   const containerRef = useRef(null);
 
