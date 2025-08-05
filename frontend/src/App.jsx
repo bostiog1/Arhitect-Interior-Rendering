@@ -1,9 +1,11 @@
-import Contact from "./components/Contact";
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
 import FloatingContact from "./components/FloatingContact";
-import Footer from "./components/Footer";
 import RenderConfigurator from "./components/RenderConfigurator";
-import { Typography } from "@mui/material";
 import titleImage from "./assets/title.png";
+
+// Load Stripe
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 function App() {
   return (
@@ -15,7 +17,12 @@ function App() {
           className="w-full h-auto"
         />
       </div>
-      <RenderConfigurator />
+
+      {/* Wrap Stripe-enabled component */}
+      <Elements stripe={stripePromise}>
+        <RenderConfigurator />
+      </Elements>
+
       <FloatingContact />
     </div>
   );
