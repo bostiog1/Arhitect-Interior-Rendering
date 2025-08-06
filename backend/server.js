@@ -29,10 +29,14 @@ const orderSchema = new mongoose.Schema({
   fileName: { type: String, required: true },
   fileType: { type: String, required: true },
   fileSize: { type: Number, required: true },
+  fileLink: { type: String, default: null }, // Add this
+  uploadType: { type: String, enum: ["file", "link"], required: true }, // Add this
   s3Url: { type: String, default: null },
   paymentIntentId: { type: String, unique: true, required: true },
   amount: { type: Number, required: true }, // Amount in cents
   currency: { type: String, default: "usd" },
+  deliveryDate: { type: Date, default: null },
+  notes: { type: String, default: "" },
   status: {
     type: String,
     default: "pending",
@@ -64,6 +68,10 @@ app.post("/api/create-payment-intent", async (req, res) => {
     clientName,
     clientEmail,
     clientPhone,
+    deliveryDate, // ADD
+    notes, // ADD
+    uploadType, // ADD
+    fileLink, // ADD
   } = req.body;
 
   // --- Cost Control Logic (Backend Enforcement) ---
@@ -117,6 +125,10 @@ app.post("/api/create-payment-intent", async (req, res) => {
       amount: amount, // Store original amount for your records, not in cents
       currency: currency || "usd",
       status: "pending",
+      deliveryDate: deliveryDate, // ADD
+      notes: notes, // ADD
+      uploadType: uploadType, // ADD
+      fileLink: fileLink, // ADD
     });
 
     await newOrder.save();
