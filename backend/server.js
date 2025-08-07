@@ -8,7 +8,15 @@ const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
-app.use(cors());
+
+// Configure CORS to allow your Netlify frontend domain
+const corsOptions = {
+  origin: "https://lucent-mochi-66ab64.netlify.app/", // REPLACE with your actual Netlify frontend URL
+  methods: ["GET", "POST", "PUT", "DELETE"], // Allow necessary methods
+  credentials: true, // If you send cookies or authorization headers
+};
+app.use(cors(corsOptions));
+
 app.use(express.json());
 
 // --- MongoDB Connection ---
