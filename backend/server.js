@@ -39,7 +39,7 @@ const orderSchema = new mongoose.Schema({
     enum: ["pending", "succeeded", "failed", "processing", "completed"],
   },
   timestamp: { type: Date, default: Date.now },
-  
+
   deliveryDate: { type: Date, default: null },
   notes: { type: String, default: "" },
   uploadType: { type: String, enum: ["file", "link"], required: true }, // Add this
@@ -55,6 +55,11 @@ const s3Client = new S3Client({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
   region: process.env.AWS_REGION,
+});
+
+// Add this to your server.js
+app.get("/", (req, res) => {
+  res.status(200).send("Backend is alive!");
 });
 
 // --- API Endpoint: Create Payment Intent ---
@@ -187,7 +192,7 @@ app.post("/api/get-presigned-url", async (req, res) => {
     if (!order) {
       return res.status(404).json({ error: "Order not found or mismatch." });
     }
-    
+
     const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB (re-define or import from config)
     if (order.fileSize > MAX_FILE_SIZE_BYTES) {
       return res
