@@ -11,7 +11,7 @@ const app = express();
 
 // Configure CORS to allow your Netlify frontend domain
 const corsOptions = {
-  origin: "https://lucent-mochi-66ab64.netlify.app/", 
+  origin: "https://steady-creponne-4ab4ff.netlify.app/",
   methods: ["GET", "POST", "PUT", "DELETE"], // Allow necessary methods
   credentials: true, // If you send cookies or authorization headers
 };
