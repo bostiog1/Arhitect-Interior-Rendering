@@ -29,20 +29,21 @@ const orderSchema = new mongoose.Schema({
   fileName: { type: String, required: true },
   fileType: { type: String, required: true },
   fileSize: { type: Number, required: true },
-  fileLink: { type: String, default: null }, // Add this
-  uploadType: { type: String, enum: ["file", "link"], required: true }, // Add this
   s3Url: { type: String, default: null },
   paymentIntentId: { type: String, unique: true, required: true },
   amount: { type: Number, required: true }, // Amount in cents
   currency: { type: String, default: "usd" },
-  deliveryDate: { type: Date, default: null },
-  notes: { type: String, default: "" },
   status: {
     type: String,
     default: "pending",
     enum: ["pending", "succeeded", "failed", "processing", "completed"],
   },
   timestamp: { type: Date, default: Date.now },
+  
+  deliveryDate: { type: Date, default: null },
+  notes: { type: String, default: "" },
+  uploadType: { type: String, enum: ["file", "link"], required: true }, // Add this
+  fileLink: { type: String, default: null }, // Add this
 });
 
 const Order = mongoose.model("Order", orderSchema);
@@ -121,6 +122,7 @@ app.post("/api/create-payment-intent", async (req, res) => {
       fileName: fileName,
       fileType: fileType,
       fileSize: fileSize,
+
       paymentIntentId: paymentIntent.id,
       amount: amount, // Store original amount for your records, not in cents
       currency: currency || "usd",
@@ -181,9 +183,11 @@ app.post("/api/get-presigned-url", async (req, res) => {
       orderId: orderId,
       paymentIntentId: paymentIntentId,
     });
+
     if (!order) {
       return res.status(404).json({ error: "Order not found or mismatch." });
     }
+    
     const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB (re-define or import from config)
     if (order.fileSize > MAX_FILE_SIZE_BYTES) {
       return res
