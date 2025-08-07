@@ -27,7 +27,7 @@ const PaymentForm = ({
       // Step 1: Request PaymentIntent from your backend, including client info
       const response = await fetch(
         // "http://localhost:3001/api/create-payment-intent",
-        "https://your-backend-project.vercel.app/api/create-payment-intent",
+        "https://arhitect-interior-rendering-6lzv.vercel.app/api/create-payment-intent",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
