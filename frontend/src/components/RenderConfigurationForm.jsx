@@ -256,7 +256,8 @@ const RenderConfigurationForm = () => {
       try {
         // Step 1: Get the presigned URL from the backend
         const response = await fetch(
-          "http://localhost:3001/api/get-presigned-url",
+          // "http://localhost:3001/api/get-presigned-url",
+          "https://your-backend-project.vercel.app/api/get-presigned-url",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
