@@ -9,14 +9,6 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 
-// // Configure CORS to allow your Netlify frontend domain
-// const corsOptions = {
-//   origin: "https://steady-creponne-4ab4ff.netlify.app/",
-//   methods: ["GET", "POST", "PUT", "DELETE"], // Allow necessary methods
-//   credentials: true, // If you send cookies or authorization headers
-// };
-// app.use(cors(corsOptions));
-
 app.use(
   cors({
     origin: [
