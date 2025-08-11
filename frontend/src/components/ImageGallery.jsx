@@ -139,8 +139,8 @@ const ImageGallery = () => {
             userSelect: "none",
           }}
           ref={scrollContainerRef}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
+          // onMouseEnter={handleMouseEnter}
+          // onMouseLeave={handleMouseLeave}
           onMouseDown={handleMouseDown}
           onContextMenu={handleContextMenu}
         >
